@@ -2,12 +2,11 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 
 # ============================================================
-# CONFIGURAZIONE
+# CONFIGURAZIONE PAGINA
 # ============================================================
 
 st.set_page_config(
@@ -28,21 +27,22 @@ DEFAULT_FILE = Path(__file__).with_name(
 st.markdown(
     """
     <style>
+
     .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1.4rem;
         padding-bottom: 2rem;
         max-width: 1500px;
     }
 
     [data-testid="stMetric"] {
-        background: rgba(128,128,128,.07);
-        border: 1px solid rgba(128,128,128,.20);
-        padding: 16px 18px;
+        background: rgba(128, 128, 128, 0.07);
+        border: 1px solid rgba(128, 128, 128, 0.20);
+        padding: 15px 17px;
         border-radius: 16px;
     }
 
     [data-testid="stMetricLabel"] {
-        font-size: .95rem;
+        font-size: 0.92rem;
     }
 
     [data-testid="stMetricValue"] {
@@ -50,9 +50,10 @@ st.markdown(
     }
 
     .small-note {
-        opacity: .72;
-        font-size: .88rem;
+        opacity: 0.72;
+        font-size: 0.88rem;
     }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -60,7 +61,7 @@ st.markdown(
 
 
 # ============================================================
-# COLONNE DEL MASTER
+# NOMI COLONNE SURVEY_DATA
 # ============================================================
 
 COL_CONTEXT = "Contesto Lavorativo :"
@@ -87,11 +88,19 @@ COL_REAL = "Risk_Bassa_Realizzazione"
 
 
 # ============================================================
-# FUNZIONI LETTURA
+# LETTURA EXCEL
 # ============================================================
 
 @st.cache_data(show_spinner=False)
 def load_excel(path_or_buffer):
+    """
+    Legge:
+    - Survey_Data
+    - ML_Output
+
+    ML_Output viene letto senza header perché contiene
+    coppie parametro/valore e matrici.
+    """
 
     survey = pd.read_excel(
         path_or_buffer,
@@ -112,15 +121,25 @@ def load_excel(path_or_buffer):
     return survey, ml
 
 
+# ============================================================
+# PULIZIA DATASET
+# ============================================================
+
 def clean_survey(df):
 
     df = df.copy()
 
     if COL_AGE in df.columns:
-        df = df[df[COL_AGE].notna()].copy()
+        df = df[
+            df[COL_AGE].notna()
+        ].copy()
 
     return df
 
+
+# ============================================================
+# LETTURA METRICHE ML_OUTPUT
+# ============================================================
 
 def ml_value(ml, key, default=None):
 
@@ -132,7 +151,9 @@ def ml_value(ml, key, default=None):
         if len(row) < 2:
             continue
 
-        current_key = str(row.iloc[0]).strip()
+        current_key = str(
+            row.iloc[0]
+        ).strip()
 
         if current_key == key:
             return row.iloc[1]
@@ -140,7 +161,14 @@ def ml_value(ml, key, default=None):
     return default
 
 
-def ml_value_multi(ml, keys, default=None):
+def ml_value_multi(
+    ml,
+    keys,
+    default=None,
+):
+    """
+    Cerca più possibili nomi della stessa metrica.
+    """
 
     for key in keys:
 
@@ -150,26 +178,42 @@ def ml_value_multi(ml, keys, default=None):
             None,
         )
 
-        if value is not None and pd.notna(value):
+        if (
+            value is not None
+            and pd.notna(value)
+        ):
             return value
 
     return default
 
 
+# ============================================================
+# FUNZIONI FORMATO
+# ============================================================
+
 def safe_float(value):
 
     try:
 
-        if value is None or pd.isna(value):
+        if (
+            value is None
+            or pd.isna(value)
+        ):
             return None
 
         return float(value)
 
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError,
+    ):
         return None
 
 
-def format_percent(value, decimals=1):
+def format_percent(
+    value,
+    decimals=1,
+):
 
     value = safe_float(value)
 
@@ -179,7 +223,10 @@ def format_percent(value, decimals=1):
     return f"{value:.{decimals}%}"
 
 
-def format_pp(value, decimals=1):
+def format_pp(
+    value,
+    decimals=1,
+):
 
     value = safe_float(value)
 
@@ -188,21 +235,30 @@ def format_pp(value, decimals=1):
 
     sign = "+" if value > 0 else ""
 
-    return f"{sign}{value * 100:.{decimals}f} p.p."
+    return (
+        f"{sign}"
+        f"{value * 100:.{decimals}f} p.p."
+    )
 
 
-def compact_label(value, max_len=42):
+def compact_label(
+    value,
+    max_len=42,
+):
 
     s = str(value)
 
     if len(s) <= max_len:
         return s
 
-    return s[:max_len - 1] + "…"
+    return (
+        s[: max_len - 1]
+        + "…"
+    )
 
 
 # ============================================================
-# METRICHE DATASET
+# METRICHE DEL DATASET
 # ============================================================
 
 def dataset_metrics(df):
@@ -221,18 +277,42 @@ def dataset_metrics(df):
             "realization": None,
         }
 
+    # --------------------------------
+    # Risk Index
+    # --------------------------------
+
     risk_index = pd.to_numeric(
         df[COL_INDEX],
         errors="coerce",
     ).mean()
 
-    risk_ma = df[COL_RISK].isin(
-        ["Medium_Risk", "High_Risk"]
-    ).mean()
+    # --------------------------------
+    # Rischio medio-alto
+    # --------------------------------
+
+    risk_ma = (
+        df[COL_RISK]
+        .isin(
+            [
+                "Medium_Risk",
+                "High_Risk",
+            ]
+        )
+        .mean()
+    )
+
+    # --------------------------------
+    # Rischio basso
+    # --------------------------------
 
     risk_low = (
-        df[COL_RISK] == "Low_Risk"
+        df[COL_RISK]
+        == "Low_Risk"
     ).mean()
+
+    # --------------------------------
+    # Dimensioni
+    # --------------------------------
 
     exhaustion = pd.to_numeric(
         df[COL_EXH],
@@ -250,84 +330,110 @@ def dataset_metrics(df):
     ).mean()
 
     return {
-        "n": n,
-        "risk_index": risk_index,
-        "risk_ma": risk_ma,
-        "risk_low": risk_low,
-        "exhaustion": exhaustion,
-        "detachment": detachment,
-        "realization": realization,
+
+        "n":
+            n,
+
+        "risk_index":
+            risk_index,
+
+        "risk_ma":
+            risk_ma,
+
+        "risk_low":
+            risk_low,
+
+        "exhaustion":
+            exhaustion,
+
+        "detachment":
+            detachment,
+
+        "realization":
+            realization,
     }
 
+
+# ============================================================
+# METRICHE RANDOM FOREST
+# ============================================================
 
 def ml_metrics(ml):
 
     return {
 
-        "training": ml_value_multi(
-            ml,
-            [
-                "Accuracy_Full_Training",
-                "Accuracy_Full",
-            ],
-        ),
+        "training":
+            ml_value_multi(
+                ml,
+                [
+                    "Accuracy_Full_Training",
+                    "Accuracy_Full",
+                ],
+            ),
 
-        "cv": ml_value_multi(
-            ml,
-            [
-                "Accuracy_CV",
-                "Cross-Validation Accuracy",
-            ],
-        ),
+        "cv":
+            ml_value_multi(
+                ml,
+                [
+                    "Accuracy_CV",
+                    "Cross-Validation Accuracy",
+                ],
+            ),
 
-        "dominant": ml_value_multi(
-            ml,
-            [
-                "Fattore_Dominante",
-            ],
-            "—",
-        ),
+        "dominant":
+            ml_value_multi(
+                ml,
+                [
+                    "Fattore_Dominante",
+                ],
+                "—",
+            ),
 
-        "importance": ml_value_multi(
-            ml,
-            [
-                "Importanza_Dominante",
-            ],
-        ),
+        "importance":
+            ml_value_multi(
+                ml,
+                [
+                    "Importanza_Dominante",
+                ],
+            ),
 
-        "updated": ml_value_multi(
-            ml,
-            [
-                "Timestamp_Aggiornamento",
-            ],
-            "—",
-        ),
+        "updated":
+            ml_value_multi(
+                ml,
+                [
+                    "Timestamp_Aggiornamento",
+                ],
+                "—",
+            ),
 
-        "respondents": ml_value_multi(
-            ml,
-            [
-                "Rispondenti",
-            ],
-        ),
+        "respondents":
+            ml_value_multi(
+                ml,
+                [
+                    "Rispondenti",
+                ],
+            ),
 
-        "risk_low": ml_value_multi(
-            ml,
-            [
-                "Rischio_Basso",
-            ],
-        ),
+        "risk_low":
+            ml_value_multi(
+                ml,
+                [
+                    "Rischio_Basso",
+                ],
+            ),
 
-        "risk_ma": ml_value_multi(
-            ml,
-            [
-                "Rischio_Medio_Alto",
-            ],
-        ),
+        "risk_ma":
+            ml_value_multi(
+                ml,
+                [
+                    "Rischio_Medio_Alto",
+                ],
+            ),
     }
 
 
 # ============================================================
-# GRAFICI
+# GRAFICO DISTRIBUZIONE SINGOLO DATASET
 # ============================================================
 
 def distribution_chart(
@@ -337,7 +443,10 @@ def distribution_chart(
     horizontal=False,
 ):
 
-    if column not in df.columns or df.empty:
+    if (
+        column not in df.columns
+        or df.empty
+    ):
         return None
 
     counts = (
@@ -368,9 +477,12 @@ def distribution_chart(
         fig.update_yaxes(
             ticktext=[
                 compact_label(x)
-                for x in counts["Categoria"]
+                for x
+                in counts["Categoria"]
             ],
-            tickvals=counts["Categoria"],
+            tickvals=counts[
+                "Categoria"
+            ],
         )
 
     else:
@@ -397,19 +509,32 @@ def distribution_chart(
             l=10,
             r=10,
             t=55,
-            b=20,
+            b=40,
         ),
     )
 
     return fig
 
 
+# ============================================================
+# CONFRONTO DISTRIBUZIONI
+# ============================================================
+
 def comparison_distribution(
     master_df,
     new_df,
     column,
     title,
+    category_map=None,
+    horizontal=False,
 ):
+    """
+    Confronta percentualmente una variabile tra
+    MASTER e dataset caricato.
+
+    Questa versione NON usa reset_index + rename,
+    evitando il KeyError sulla colonna Categoria.
+    """
 
     if (
         column not in master_df.columns
@@ -417,77 +542,203 @@ def comparison_distribution(
     ):
         return None
 
-    master = (
+    # --------------------------------
+    # Serie MASTER
+    # --------------------------------
+
+    master_series = (
         master_df[column]
         .fillna("Non specificato")
         .astype(str)
-        .value_counts(normalize=True)
-        .mul(100)
-        .rename("MASTER")
     )
 
-    new = (
+    # --------------------------------
+    # Serie CARICATO
+    # --------------------------------
+
+    new_series = (
         new_df[column]
         .fillna("Non specificato")
         .astype(str)
-        .value_counts(normalize=True)
-        .mul(100)
-        .rename("CARICATO")
     )
 
-    comp = pd.concat(
-        [master, new],
-        axis=1,
-    ).fillna(0)
+    # --------------------------------
+    # Ridenominazione categorie
+    # --------------------------------
 
-    comp = (
-        comp
-        .reset_index()
-        .rename(
-            columns={
-                "index": "Categoria"
-            }
+    if category_map is not None:
+
+        master_series = (
+            master_series.replace(
+                category_map
+            )
+        )
+
+        new_series = (
+            new_series.replace(
+                category_map
+            )
+        )
+
+    # --------------------------------
+    # Percentuali
+    # --------------------------------
+
+    master = (
+        master_series
+        .value_counts(
+            normalize=True
+        )
+        .mul(100)
+    )
+
+    new = (
+        new_series
+        .value_counts(
+            normalize=True
+        )
+        .mul(100)
+    )
+
+    # --------------------------------
+    # Categorie complessive
+    # --------------------------------
+
+    all_categories = sorted(
+        set(master.index)
+        .union(
+            set(new.index)
         )
     )
 
+    # --------------------------------
+    # DataFrame esplicito
+    #
+    # NON dipende dal nome dell'indice
+    # --------------------------------
+
+    comp = pd.DataFrame(
+        {
+            "Categoria":
+                all_categories,
+
+            "MASTER":
+                [
+                    float(
+                        master.get(
+                            cat,
+                            0,
+                        )
+                    )
+                    for cat
+                    in all_categories
+                ],
+
+            "CARICATO":
+                [
+                    float(
+                        new.get(
+                            cat,
+                            0,
+                        )
+                    )
+                    for cat
+                    in all_categories
+                ],
+        }
+    )
+
+    # --------------------------------
+    # Formato long
+    # --------------------------------
+
     long_df = comp.melt(
-        id_vars="Categoria",
+        id_vars=[
+            "Categoria"
+        ],
+        value_vars=[
+            "MASTER",
+            "CARICATO",
+        ],
         var_name="Dataset",
         value_name="Percentuale",
     )
 
-    fig = px.bar(
-        long_df,
-        x="Categoria",
-        y="Percentuale",
-        color="Dataset",
-        barmode="group",
-        text_auto=".1f",
-        title=title,
-    )
+    # --------------------------------
+    # Grafico
+    # --------------------------------
 
-    fig.update_traces(
-        texttemplate="%{y:.1f}%",
-        textposition="outside",
-    )
+    if horizontal:
 
-    fig.update_yaxes(
-        title="Percentuale",
-        ticksuffix="%",
-    )
+        fig = px.bar(
+            long_df,
+            x="Percentuale",
+            y="Categoria",
+            color="Dataset",
+            barmode="group",
+            orientation="h",
+            text="Percentuale",
+            title=title,
+        )
 
-    fig.update_xaxes(
-        tickangle=-25
-    )
+        fig.update_traces(
+            texttemplate="%{x:.1f}%",
+            textposition="outside",
+        )
+
+        fig.update_xaxes(
+            title="Percentuale",
+            ticksuffix="%",
+        )
+
+        fig.update_yaxes(
+            title=None,
+        )
+
+        height = max(
+            400,
+            len(all_categories) * 45,
+        )
+
+    else:
+
+        fig = px.bar(
+            long_df,
+            x="Categoria",
+            y="Percentuale",
+            color="Dataset",
+            barmode="group",
+            text="Percentuale",
+            title=title,
+        )
+
+        fig.update_traces(
+            texttemplate="%{y:.1f}%",
+            textposition="outside",
+        )
+
+        fig.update_yaxes(
+            title="Percentuale",
+            ticksuffix="%",
+            rangemode="tozero",
+        )
+
+        fig.update_xaxes(
+            title=None,
+            tickangle=-25,
+        )
+
+        height = 430
 
     fig.update_layout(
-        height=430,
+        height=height,
         margin=dict(
             l=10,
             r=10,
             t=60,
-            b=30,
+            b=60,
         ),
+        legend_title_text="Dataset",
     )
 
     return fig
@@ -497,7 +748,9 @@ def comparison_distribution(
 # HEADER
 # ============================================================
 
-st.title("NOT SUITABLE FOR WORK")
+st.title(
+    "NOT SUITABLE FOR WORK"
+)
 
 st.caption(
     "Dashboard interattiva • GDG Palermo • "
@@ -511,14 +764,17 @@ st.caption(
 
 try:
 
-    master_survey, master_ml = load_excel(
-        DEFAULT_FILE
+    master_survey, master_ml = (
+        load_excel(
+            DEFAULT_FILE
+        )
     )
 
 except Exception as e:
 
     st.error(
-        "Impossibile leggere il MASTER di riferimento: "
+        "Impossibile leggere il MASTER "
+        "di riferimento: "
         f"{e}"
     )
 
@@ -531,21 +787,25 @@ master_df = clean_survey(
 
 
 # ============================================================
-# UPLOAD NUOVO FILE
+# UPLOAD NUOVO DATASET
 # ============================================================
 
-uploaded = st.sidebar.file_uploader(
-    "Carica dataset aggiornato",
-    type=["xlsx"],
-    help=(
-        "Il MASTER rimane come baseline. "
-        "Il file caricato viene analizzato e confrontato "
-        "con il MASTER."
-    ),
+uploaded = (
+    st.sidebar.file_uploader(
+        "Carica dataset aggiornato",
+        type=["xlsx"],
+        help=(
+            "Il MASTER rimane come baseline. "
+            "Il file caricato viene analizzato "
+            "e confrontato con il MASTER."
+        ),
+    )
 )
 
 
-has_upload = uploaded is not None
+has_upload = (
+    uploaded is not None
+)
 
 
 if has_upload:
@@ -554,20 +814,25 @@ if has_upload:
 
         uploaded.seek(0)
 
-        current_survey, current_ml = load_excel(
-            uploaded
+        current_survey, current_ml = (
+            load_excel(
+                uploaded
+            )
         )
 
         current_df = clean_survey(
             current_survey
         )
 
-        current_name = uploaded.name
+        current_name = (
+            uploaded.name
+        )
 
     except Exception as e:
 
         st.error(
-            "Impossibile leggere il file caricato: "
+            "Impossibile leggere "
+            "il file caricato: "
             f"{e}"
         )
 
@@ -575,11 +840,21 @@ if has_upload:
 
 else:
 
-    current_survey = master_survey
-    current_ml = master_ml
-    current_df = master_df.copy()
+    current_survey = (
+        master_survey
+    )
 
-    current_name = DEFAULT_FILE.name
+    current_ml = (
+        master_ml
+    )
+
+    current_df = (
+        master_df.copy()
+    )
+
+    current_name = (
+        DEFAULT_FILE.name
+    )
 
 
 # ============================================================
@@ -587,6 +862,7 @@ else:
 # ============================================================
 
 required_columns = [
+
     COL_AGE,
     COL_GENDER,
     COL_MODE,
@@ -603,21 +879,54 @@ required_columns = [
 ]
 
 
-missing = [
+missing_current = [
+
     col
-    for col in required_columns
-    if col not in current_df.columns
+    for col
+    in required_columns
+
+    if col
+    not in current_df.columns
 ]
 
 
-if missing:
+if missing_current:
 
     st.error(
-        "Nel dataset corrente mancano alcune "
+        "Nel dataset corrente "
+        "mancano alcune colonne necessarie:"
+    )
+
+    st.write(
+        missing_current
+    )
+
+    st.stop()
+
+
+# Controllo anche il MASTER
+
+missing_master = [
+
+    col
+    for col
+    in required_columns
+
+    if col
+    not in master_df.columns
+]
+
+
+if missing_master:
+
+    st.error(
+        "Nel MASTER mancano alcune "
         "colonne necessarie:"
     )
 
-    st.write(missing)
+    st.write(
+        missing_master
+    )
 
     st.stop()
 
@@ -626,12 +935,16 @@ if missing:
 # METRICHE ML
 # ============================================================
 
-master_ml_stats = ml_metrics(
-    master_ml
+master_ml_stats = (
+    ml_metrics(
+        master_ml
+    )
 )
 
-current_ml_stats = ml_metrics(
-    current_ml
+current_ml_stats = (
+    ml_metrics(
+        current_ml
+    )
 )
 
 
@@ -640,6 +953,7 @@ current_ml_stats = ml_metrics(
 # ============================================================
 
 st.sidebar.divider()
+
 
 if has_upload:
 
@@ -652,18 +966,23 @@ if has_upload:
     )
 
     st.sidebar.caption(
-        f"Baseline: {DEFAULT_FILE.name}"
+        "Baseline: "
+        f"{DEFAULT_FILE.name}"
     )
 
 else:
 
     st.sidebar.info(
-        "Stai visualizzando il MASTER."
+        "Stai visualizzando "
+        "il MASTER."
     )
 
 
 st.sidebar.divider()
-st.sidebar.header("Filtri")
+
+st.sidebar.header(
+    "Filtri"
+)
 
 
 filter_cols = {
@@ -694,7 +1013,9 @@ filter_cols = {
 }
 
 
-filtered = current_df.copy()
+filtered = (
+    current_df.copy()
+)
 
 
 for label, col in filter_cols.items():
@@ -710,10 +1031,12 @@ for label, col in filter_cols.items():
         .tolist()
     )
 
-    selected = st.sidebar.multiselect(
-        label,
-        opts,
-        placeholder="Tutti",
+    selected = (
+        st.sidebar.multiselect(
+            label,
+            opts,
+            placeholder="Tutti",
+        )
     )
 
     if selected:
@@ -734,8 +1057,9 @@ if st.sidebar.button(
 
 
 st.sidebar.caption(
-    f"Risposte visualizzate: "
-    f"{len(filtered)} / {len(current_df)}"
+    "Risposte visualizzate: "
+    f"{len(filtered)} / "
+    f"{len(current_df)}"
 )
 
 
@@ -743,12 +1067,16 @@ st.sidebar.caption(
 # KPI CORRENTI
 # ============================================================
 
-current_filtered_stats = dataset_metrics(
-    filtered
+current_filtered_stats = (
+    dataset_metrics(
+        filtered
+    )
 )
 
 
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3, k4 = (
+    st.columns(4)
+)
 
 
 k1.metric(
@@ -760,7 +1088,9 @@ k1.metric(
 k2.metric(
     "Risk Index medio",
     format_percent(
-        current_filtered_stats["risk_index"]
+        current_filtered_stats[
+            "risk_index"
+        ]
     ),
 )
 
@@ -768,7 +1098,9 @@ k2.metric(
 k3.metric(
     "Rischio medio-alto",
     format_percent(
-        current_filtered_stats["risk_ma"]
+        current_filtered_stats[
+            "risk_ma"
+        ]
     ),
 )
 
@@ -776,7 +1108,9 @@ k3.metric(
 k4.metric(
     "Accuracy CV",
     format_percent(
-        current_ml_stats["cv"]
+        current_ml_stats[
+            "cv"
+        ]
     ),
 )
 
@@ -803,41 +1137,65 @@ else:
 # TAB
 # ============================================================
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    [
-        "Overview",
-        "Profilo del campione",
-        "Random Forest",
-        "Confronto dataset",
-    ]
+tab1, tab2, tab3, tab4 = (
+    st.tabs(
+        [
+            "Overview",
+            "Profilo del campione",
+            "Random Forest",
+            "Confronto dataset",
+        ]
+    )
 )
 
 
 # ============================================================
-# TAB 1 — OVERVIEW
+# TAB 1
+# OVERVIEW
 # ============================================================
 
 with tab1:
 
-    st.subheader("Quadro generale")
+    st.subheader(
+        "Quadro generale"
+    )
 
-    c1, c2 = st.columns(2)
+
+    # --------------------------------------------------------
+    # RISCHIO + ML PROFILE
+    # --------------------------------------------------------
+
+    c1, c2 = (
+        st.columns(2)
+    )
 
 
     risk_map = {
-        "Low_Risk": "Rischio basso",
-        "Medium_Risk": "Rischio medio",
-        "High_Risk": "Rischio alto",
+
+        "Low_Risk":
+            "Rischio basso",
+
+        "Medium_Risk":
+            "Rischio medio",
+
+        "High_Risk":
+            "Rischio alto",
     }
 
 
     risk_counts = (
         filtered[COL_RISK]
         .map(risk_map)
-        .fillna(filtered[COL_RISK])
+        .fillna(
+            filtered[COL_RISK]
+        )
         .value_counts()
-        .rename_axis("Rischio")
-        .reset_index(name="N")
+        .rename_axis(
+            "Rischio"
+        )
+        .reset_index(
+            name="N"
+        )
     )
 
 
@@ -847,8 +1205,11 @@ with tab1:
             risk_counts,
             names="Rischio",
             values="N",
-            hole=.58,
-            title="Distribuzione del rischio",
+            hole=0.58,
+            title=(
+                "Distribuzione "
+                "del rischio"
+            ),
         )
 
         fig.update_traces(
@@ -874,10 +1235,16 @@ with tab1:
 
     profile_counts = (
         filtered[COL_PROFILE]
-        .fillna("Non specificato")
+        .fillna(
+            "Non specificato"
+        )
         .value_counts()
-        .rename_axis("Profilo")
-        .reset_index(name="N")
+        .rename_axis(
+            "Profilo"
+        )
+        .reset_index(
+            name="N"
+        )
     )
 
 
@@ -888,7 +1255,10 @@ with tab1:
             x="Profilo",
             y="N",
             text="N",
-            title="Distribuzione ML Profile",
+            title=(
+                "Distribuzione "
+                "ML Profile"
+            ),
         )
 
         fig.update_traces(
@@ -911,38 +1281,54 @@ with tab1:
         )
 
 
-    c3, c4 = st.columns(2)
+    # --------------------------------------------------------
+    # SETTORE + MODALITÀ
+    # --------------------------------------------------------
 
-
-    fig = distribution_chart(
-        filtered,
-        COL_SECTOR,
-        "Rispondenti per settore",
-        True,
+    c3, c4 = (
+        st.columns(2)
     )
 
-    if fig is not None:
+
+    fig_sector = (
+        distribution_chart(
+            filtered,
+            COL_SECTOR,
+            "Rispondenti per settore",
+            True,
+        )
+    )
+
+
+    if fig_sector is not None:
 
         c3.plotly_chart(
-            fig,
+            fig_sector,
             use_container_width=True,
         )
 
 
-    fig = distribution_chart(
-        filtered,
-        COL_MODE,
-        "Modalità lavorativa",
-        True,
+    fig_mode = (
+        distribution_chart(
+            filtered,
+            COL_MODE,
+            "Modalità lavorativa",
+            True,
+        )
     )
 
-    if fig is not None:
+
+    if fig_mode is not None:
 
         c4.plotly_chart(
-            fig,
+            fig_mode,
             use_container_width=True,
         )
 
+
+    # --------------------------------------------------------
+    # DIMENSIONI RISCHIO
+    # --------------------------------------------------------
 
     st.subheader(
         "Dimensioni di rischio"
@@ -961,9 +1347,11 @@ with tab1:
                 current_filtered_stats[
                     "exhaustion"
                 ],
+
                 current_filtered_stats[
                     "detachment"
                 ],
+
                 current_filtered_stats[
                     "realization"
                 ],
@@ -977,13 +1365,21 @@ with tab1:
         x="Dimensione",
         y="Indice medio",
         text_auto=".1%",
-        range_y=[0, 1],
-        title="Indice medio per dimensione",
+        range_y=[
+            0,
+            1,
+        ],
+        title=(
+            "Indice medio "
+            "per dimensione"
+        ),
     )
+
 
     fig.update_yaxes(
         tickformat=".0%"
     )
+
 
     fig.update_layout(
         height=390,
@@ -995,6 +1391,7 @@ with tab1:
         ),
     )
 
+
     st.plotly_chart(
         fig,
         use_container_width=True,
@@ -1002,7 +1399,8 @@ with tab1:
 
 
 # ============================================================
-# TAB 2 — PROFILO CAMPIONE
+# TAB 2
+# PROFILO CAMPIONE
 # ============================================================
 
 with tab2:
@@ -1012,81 +1410,100 @@ with tab2:
     )
 
 
-    a, b = st.columns(2)
-
-
-    fig = distribution_chart(
-        filtered,
-        COL_AGE,
-        "Età",
+    a, b = (
+        st.columns(2)
     )
 
-    if fig is not None:
+
+    fig_age = (
+        distribution_chart(
+            filtered,
+            COL_AGE,
+            "Età",
+        )
+    )
+
+
+    if fig_age is not None:
 
         a.plotly_chart(
-            fig,
+            fig_age,
             use_container_width=True,
         )
 
 
-    fig = distribution_chart(
-        filtered,
-        COL_GENDER,
-        "Genere",
+    fig_gender = (
+        distribution_chart(
+            filtered,
+            COL_GENDER,
+            "Genere",
+        )
     )
 
-    if fig is not None:
+
+    if fig_gender is not None:
 
         b.plotly_chart(
-            fig,
+            fig_gender,
             use_container_width=True,
         )
 
 
-    a, b = st.columns(2)
-
-
-    fig = distribution_chart(
-        filtered,
-        COL_SENIORITY,
-        "Anzianità lavorativa",
-        True,
+    a, b = (
+        st.columns(2)
     )
 
-    if fig is not None:
+
+    fig_seniority = (
+        distribution_chart(
+            filtered,
+            COL_SENIORITY,
+            "Anzianità lavorativa",
+            True,
+        )
+    )
+
+
+    if fig_seniority is not None:
 
         a.plotly_chart(
-            fig,
+            fig_seniority,
             use_container_width=True,
         )
 
 
-    fig = distribution_chart(
-        filtered,
-        COL_HOURS,
-        "Ore lavorative settimanali",
-        True,
+    fig_hours = (
+        distribution_chart(
+            filtered,
+            COL_HOURS,
+            "Ore lavorative settimanali",
+            True,
+        )
     )
 
-    if fig is not None:
+
+    if fig_hours is not None:
 
         b.plotly_chart(
-            fig,
+            fig_hours,
             use_container_width=True,
         )
 
 
-    fig = distribution_chart(
-        filtered,
-        COL_ROLE,
-        "Ruolo e livello di responsabilità",
-        True,
+    fig_role = (
+        distribution_chart(
+            filtered,
+            COL_ROLE,
+            "Ruolo e livello di responsabilità",
+            True,
+        )
     )
 
-    if fig is not None:
+
+    if fig_role is not None:
 
         st.plotly_chart(
-            fig,
+            fig_role,
             use_container_width=True,
         )
 
@@ -1096,6 +1513,7 @@ with tab2:
     ):
 
         visible_cols = [
+
             COL_AGE,
             COL_GENDER,
             COL_MODE,
@@ -1108,15 +1526,19 @@ with tab2:
             COL_PROFILE,
         ]
 
+
         st.dataframe(
-            filtered[visible_cols],
+            filtered[
+                visible_cols
+            ],
             use_container_width=True,
             hide_index=True,
         )
 
 
 # ============================================================
-# TAB 3 — RANDOM FOREST
+# TAB 3
+# RANDOM FOREST
 # ============================================================
 
 with tab3:
@@ -1125,19 +1547,28 @@ with tab3:
         "Performance Random Forest"
     )
 
+
     st.caption(
-        "Le metriche provengono dal foglio ML_Output "
-        "del dataset corrente."
+        "Le metriche provengono dal foglio "
+        "ML_Output del dataset corrente."
     )
 
 
-    m1, m2, m3 = st.columns(3)
+    # --------------------------------------------------------
+    # KPI RF
+    # --------------------------------------------------------
+
+    m1, m2, m3 = (
+        st.columns(3)
+    )
 
 
     m1.metric(
         "Accuracy training",
         format_percent(
-            current_ml_stats["training"]
+            current_ml_stats[
+                "training"
+            ]
         ),
     )
 
@@ -1145,7 +1576,9 @@ with tab3:
     m2.metric(
         "5-Fold Cross Validation",
         format_percent(
-            current_ml_stats["cv"]
+            current_ml_stats[
+                "cv"
+            ]
         ),
     )
 
@@ -1153,7 +1586,9 @@ with tab3:
     m3.metric(
         "Importanza dominante",
         format_percent(
-            current_ml_stats["importance"]
+            current_ml_stats[
+                "importance"
+            ]
         ),
     )
 
@@ -1174,68 +1609,87 @@ with tab3:
     # TRAINING VS CV
     # --------------------------------------------------------
 
+    st.markdown(
+        "#### Training vs Cross Validation"
+    )
+
+
     performance_rows = []
 
 
-    if safe_float(
-        current_ml_stats["training"]
-    ) is not None:
+    training_value = safe_float(
+        current_ml_stats[
+            "training"
+        ]
+    )
+
+    cv_value = safe_float(
+        current_ml_stats[
+            "cv"
+        ]
+    )
+
+
+    if training_value is not None:
 
         performance_rows.append(
             {
-                "Metrica": "Training",
-                "Accuracy": float(
-                    current_ml_stats["training"]
-                ),
+                "Metrica":
+                    "Training",
+
+                "Accuracy":
+                    training_value,
             }
         )
 
 
-    if safe_float(
-        current_ml_stats["cv"]
-    ) is not None:
+    if cv_value is not None:
 
         performance_rows.append(
             {
-                "Metrica": "5-Fold CV",
-                "Accuracy": float(
-                    current_ml_stats["cv"]
-                ),
+                "Metrica":
+                    "5-Fold CV",
+
+                "Accuracy":
+                    cv_value,
             }
         )
 
 
     if performance_rows:
 
-        performance_df = pd.DataFrame(
-            performance_rows
+        performance_df = (
+            pd.DataFrame(
+                performance_rows
+            )
         )
+
 
         fig = px.bar(
             performance_df,
             x="Metrica",
             y="Accuracy",
             text_auto=".1%",
-            range_y=[0, 1],
+            range_y=[
+                0,
+                1,
+            ],
             title=(
-                "Training accuracy vs "
-                "Cross Validation"
+                "Training accuracy "
+                "vs Cross Validation"
             ),
         )
+
 
         fig.update_yaxes(
             tickformat=".0%"
         )
 
+
         fig.update_layout(
-            height=350,
-            margin=dict(
-                l=10,
-                r=10,
-                t=55,
-                b=20,
-            ),
+            height=350
         )
+
 
         st.plotly_chart(
             fig,
@@ -1254,40 +1708,67 @@ with tab3:
 
     try:
 
-        features = current_ml.iloc[
-            1:,
-            [7, 8]
-        ].copy()
+        features = (
+            current_ml.iloc[
+                1:,
+                [7, 8]
+            ]
+            .copy()
+        )
+
 
         features.columns = [
             "Feature",
             "Importanza",
         ]
 
+
         features["Feature"] = (
-            features["Feature"]
+            features[
+                "Feature"
+            ]
             .astype(str)
             .str.strip()
         )
 
-        features["Importanza"] = pd.to_numeric(
-            features["Importanza"],
-            errors="coerce",
+
+        features["Importanza"] = (
+            pd.to_numeric(
+                features[
+                    "Importanza"
+                ],
+                errors="coerce",
+            )
         )
 
-        features = features.dropna(
-            subset=["Importanza"]
+
+        features = (
+            features.dropna(
+                subset=[
+                    "Importanza"
+                ]
+            )
         )
+
 
         features = features[
-            ~features["Feature"].isin(
-                ["", "nan", "None"]
+            ~features[
+                "Feature"
+            ].isin(
+                [
+                    "",
+                    "nan",
+                    "None",
+                ]
             )
         ]
 
-        features = features.sort_values(
-            "Importanza",
-            ascending=True,
+
+        features = (
+            features.sort_values(
+                "Importanza",
+                ascending=True,
+            )
         )
 
 
@@ -1300,14 +1781,16 @@ with tab3:
                 orientation="h",
                 text_auto=".1%",
                 title=(
-                    "Importanza delle variabili "
-                    "nel modello"
+                    "Importanza delle "
+                    "variabili nel modello"
                 ),
             )
+
 
             fig.update_xaxes(
                 tickformat=".0%"
             )
+
 
             fig.update_layout(
                 height=max(
@@ -1322,6 +1805,7 @@ with tab3:
                 ),
             )
 
+
             st.plotly_chart(
                 fig,
                 use_container_width=True,
@@ -1330,13 +1814,16 @@ with tab3:
         else:
 
             st.info(
-                "Feature importance non disponibile."
+                "Feature importance "
+                "non disponibile."
             )
+
 
     except Exception as e:
 
         st.warning(
-            "Impossibile leggere la feature importance: "
+            "Impossibile leggere "
+            "la feature importance: "
             f"{e}"
         )
 
@@ -1352,28 +1839,52 @@ with tab3:
 
     try:
 
-        cm_training = pd.DataFrame(
-
-            [
+        cm_training = (
+            pd.DataFrame(
                 [
-                    float(current_ml.iloc[3, 4]),
-                    float(current_ml.iloc[3, 5]),
-                ],
-                [
-                    float(current_ml.iloc[4, 4]),
-                    float(current_ml.iloc[4, 5]),
-                ],
-            ],
+                    [
+                        float(
+                            current_ml.iloc[
+                                3,
+                                4
+                            ]
+                        ),
 
-            index=[
-                "Reale Basso",
-                "Reale Medio-Alto",
-            ],
+                        float(
+                            current_ml.iloc[
+                                3,
+                                5
+                            ]
+                        ),
+                    ],
 
-            columns=[
-                "Pred. Basso",
-                "Pred. Medio-Alto",
-            ],
+                    [
+                        float(
+                            current_ml.iloc[
+                                4,
+                                4
+                            ]
+                        ),
+
+                        float(
+                            current_ml.iloc[
+                                4,
+                                5
+                            ]
+                        ),
+                    ],
+                ],
+
+                index=[
+                    "Reale Basso",
+                    "Reale Medio-Alto",
+                ],
+
+                columns=[
+                    "Pred. Basso",
+                    "Pred. Medio-Alto",
+                ],
+            )
         )
 
 
@@ -1388,9 +1899,17 @@ with tab3:
             ),
         )
 
+
         fig.update_layout(
-            height=350
+            height=350,
+            margin=dict(
+                l=10,
+                r=10,
+                t=20,
+                b=20,
+            ),
         )
+
 
         st.plotly_chart(
             fig,
@@ -1417,28 +1936,52 @@ with tab3:
 
     try:
 
-        cm_cv = pd.DataFrame(
-
-            [
+        cm_cv = (
+            pd.DataFrame(
                 [
-                    float(current_ml.iloc[7, 4]),
-                    float(current_ml.iloc[7, 5]),
-                ],
-                [
-                    float(current_ml.iloc[8, 4]),
-                    float(current_ml.iloc[8, 5]),
-                ],
-            ],
+                    [
+                        float(
+                            current_ml.iloc[
+                                7,
+                                4
+                            ]
+                        ),
 
-            index=[
-                "Reale Basso",
-                "Reale Medio-Alto",
-            ],
+                        float(
+                            current_ml.iloc[
+                                7,
+                                5
+                            ]
+                        ),
+                    ],
 
-            columns=[
-                "Pred. Basso",
-                "Pred. Medio-Alto",
-            ],
+                    [
+                        float(
+                            current_ml.iloc[
+                                8,
+                                4
+                            ]
+                        ),
+
+                        float(
+                            current_ml.iloc[
+                                8,
+                                5
+                            ]
+                        ),
+                    ],
+                ],
+
+                index=[
+                    "Reale Basso",
+                    "Reale Medio-Alto",
+                ],
+
+                columns=[
+                    "Pred. Basso",
+                    "Pred. Medio-Alto",
+                ],
+            )
         )
 
 
@@ -1453,9 +1996,17 @@ with tab3:
             ),
         )
 
+
         fig.update_layout(
-            height=350
+            height=350,
+            margin=dict(
+                l=10,
+                r=10,
+                t=20,
+                b=20,
+            ),
         )
+
 
         st.plotly_chart(
             fig,
@@ -1472,7 +2023,8 @@ with tab3:
 
 
 # ============================================================
-# TAB 4 — CONFRONTO DATASET
+# TAB 4
+# CONFRONTO DATASET
 # ============================================================
 
 with tab4:
@@ -1485,18 +2037,28 @@ with tab4:
     if not has_upload:
 
         st.info(
-            "Carica un nuovo file Excel dalla barra "
-            "laterale per confrontarlo con il MASTER."
+            "Carica un nuovo file Excel dalla "
+            "barra laterale per confrontarlo "
+            "con il MASTER."
         )
+
 
     else:
 
-        master_stats = dataset_metrics(
-            master_df
+        # ====================================================
+        # METRICHE GENERALI
+        # ====================================================
+
+        master_stats = (
+            dataset_metrics(
+                master_df
+            )
         )
 
-        new_stats = dataset_metrics(
-            current_df
+        new_stats = (
+            dataset_metrics(
+                current_df
+            )
         )
 
 
@@ -1509,24 +2071,30 @@ with tab4:
         )
 
 
-        c1, c2, c3 = st.columns(3)
+        delta_n = (
+            new_stats["n"]
+            - master_stats["n"]
+        )
+
+
+        c1, c2, c3 = (
+            st.columns(3)
+        )
 
 
         c1.metric(
             "MASTER",
-            master_stats["n"],
+            master_stats[
+                "n"
+            ],
         )
 
 
         c2.metric(
             "CARICATO",
-            new_stats["n"],
-        )
-
-
-        delta_n = (
-            new_stats["n"]
-            - master_stats["n"]
+            new_stats[
+                "n"
+            ],
         )
 
 
@@ -1537,7 +2105,7 @@ with tab4:
 
 
         # ====================================================
-        # KPI COMPARATIVI
+        # KPI PRINCIPALI
         # ====================================================
 
         st.markdown(
@@ -1552,10 +2120,14 @@ with tab4:
                     "Risk Index medio",
 
                 "MASTER":
-                    master_stats["risk_index"],
+                    master_stats[
+                        "risk_index"
+                    ],
 
                 "CARICATO":
-                    new_stats["risk_index"],
+                    new_stats[
+                        "risk_index"
+                    ],
             },
 
             {
@@ -1563,10 +2135,14 @@ with tab4:
                     "Rischio medio-alto",
 
                 "MASTER":
-                    master_stats["risk_ma"],
+                    master_stats[
+                        "risk_ma"
+                    ],
 
                 "CARICATO":
-                    new_stats["risk_ma"],
+                    new_stats[
+                        "risk_ma"
+                    ],
             },
 
             {
@@ -1574,10 +2150,14 @@ with tab4:
                     "Rischio basso",
 
                 "MASTER":
-                    master_stats["risk_low"],
+                    master_stats[
+                        "risk_low"
+                    ],
 
                 "CARICATO":
-                    new_stats["risk_low"],
+                    new_stats[
+                        "risk_low"
+                    ],
             },
 
             {
@@ -1585,10 +2165,14 @@ with tab4:
                     "Esaurimento emotivo",
 
                 "MASTER":
-                    master_stats["exhaustion"],
+                    master_stats[
+                        "exhaustion"
+                    ],
 
                 "CARICATO":
-                    new_stats["exhaustion"],
+                    new_stats[
+                        "exhaustion"
+                    ],
             },
 
             {
@@ -1596,10 +2180,14 @@ with tab4:
                     "Distacco",
 
                 "MASTER":
-                    master_stats["detachment"],
+                    master_stats[
+                        "detachment"
+                    ],
 
                 "CARICATO":
-                    new_stats["detachment"],
+                    new_stats[
+                        "detachment"
+                    ],
             },
 
             {
@@ -1607,43 +2195,75 @@ with tab4:
                     "Bassa realizzazione",
 
                 "MASTER":
-                    master_stats["realization"],
+                    master_stats[
+                        "realization"
+                    ],
 
                 "CARICATO":
-                    new_stats["realization"],
+                    new_stats[
+                        "realization"
+                    ],
             },
         ]
 
 
-        comparison_df = pd.DataFrame(
-            comparison_rows
+        comparison_df = (
+            pd.DataFrame(
+                comparison_rows
+            )
         )
 
 
-        comparison_df["Delta"] = (
-            comparison_df["CARICATO"]
-            - comparison_df["MASTER"]
+        comparison_df[
+            "Delta"
+        ] = (
+            comparison_df[
+                "CARICATO"
+            ]
+            - comparison_df[
+                "MASTER"
+            ]
         )
 
 
-        display_df = comparison_df.copy()
-
-
-        display_df["MASTER"] = (
-            display_df["MASTER"]
-            .apply(format_percent)
+        display_df = (
+            comparison_df.copy()
         )
 
 
-        display_df["CARICATO"] = (
-            display_df["CARICATO"]
-            .apply(format_percent)
+        display_df[
+            "MASTER"
+        ] = (
+            display_df[
+                "MASTER"
+            ]
+            .apply(
+                format_percent
+            )
         )
 
 
-        display_df["Delta"] = (
-            comparison_df["Delta"]
-            .apply(format_pp)
+        display_df[
+            "CARICATO"
+        ] = (
+            display_df[
+                "CARICATO"
+            ]
+            .apply(
+                format_percent
+            )
+        )
+
+
+        display_df[
+            "Delta"
+        ] = (
+            comparison_df[
+                "Delta"
+            ]
+            .apply(
+                format_pp
+            )
         )
 
 
@@ -1655,17 +2275,24 @@ with tab4:
 
 
         # ====================================================
-        # GRAFICO KPI
+        # GRAFICO INDICATORI
         # ====================================================
 
-        chart_df = comparison_df.melt(
-            id_vars="Indicatore",
-            value_vars=[
-                "MASTER",
-                "CARICATO",
-            ],
-            var_name="Dataset",
-            value_name="Valore",
+        chart_df = (
+            comparison_df.melt(
+                id_vars=[
+                    "Indicatore"
+                ],
+
+                value_vars=[
+                    "MASTER",
+                    "CARICATO",
+                ],
+
+                var_name="Dataset",
+
+                value_name="Valore",
+            )
         )
 
 
@@ -1677,15 +2304,18 @@ with tab4:
             barmode="group",
             text_auto=".1%",
             title=(
-                "Confronto degli indicatori "
-                "di rischio"
+                "Indicatori di rischio: "
+                "MASTER vs CARICATO"
             ),
         )
 
 
         fig.update_yaxes(
             tickformat=".0%",
-            range=[0, 1],
+            range=[
+                0,
+                1,
+            ],
         )
 
 
@@ -1728,12 +2358,16 @@ with tab4:
 
                 "MASTER":
                     safe_float(
-                        master_ml_stats["training"]
+                        master_ml_stats[
+                            "training"
+                        ]
                     ),
 
                 "CARICATO":
                     safe_float(
-                        current_ml_stats["training"]
+                        current_ml_stats[
+                            "training"
+                        ]
                     ),
             },
 
@@ -1743,12 +2377,16 @@ with tab4:
 
                 "MASTER":
                     safe_float(
-                        master_ml_stats["cv"]
+                        master_ml_stats[
+                            "cv"
+                        ]
                     ),
 
                 "CARICATO":
                     safe_float(
-                        current_ml_stats["cv"]
+                        current_ml_stats[
+                            "cv"
+                        ]
                     ),
             },
 
@@ -1758,46 +2396,78 @@ with tab4:
 
                 "MASTER":
                     safe_float(
-                        master_ml_stats["importance"]
+                        master_ml_stats[
+                            "importance"
+                        ]
                     ),
 
                 "CARICATO":
                     safe_float(
-                        current_ml_stats["importance"]
+                        current_ml_stats[
+                            "importance"
+                        ]
                     ),
             },
         ]
 
 
-        ml_compare = pd.DataFrame(
-            ml_rows
+        ml_compare = (
+            pd.DataFrame(
+                ml_rows
+            )
         )
 
 
-        ml_compare["Delta"] = (
-            ml_compare["CARICATO"]
-            - ml_compare["MASTER"]
+        ml_compare[
+            "Delta"
+        ] = (
+            ml_compare[
+                "CARICATO"
+            ]
+            - ml_compare[
+                "MASTER"
+            ]
         )
 
 
-        ml_display = ml_compare.copy()
-
-
-        ml_display["MASTER"] = (
-            ml_display["MASTER"]
-            .apply(format_percent)
+        ml_display = (
+            ml_compare.copy()
         )
 
 
-        ml_display["CARICATO"] = (
-            ml_display["CARICATO"]
-            .apply(format_percent)
+        ml_display[
+            "MASTER"
+        ] = (
+            ml_display[
+                "MASTER"
+            ]
+            .apply(
+                format_percent
+            )
         )
 
 
-        ml_display["Delta"] = (
-            ml_compare["Delta"]
-            .apply(format_pp)
+        ml_display[
+            "CARICATO"
+        ] = (
+            ml_display[
+                "CARICATO"
+            ]
+            .apply(
+                format_percent
+            )
+        )
+
+
+        ml_display[
+            "Delta"
+        ] = (
+            ml_compare[
+                "Delta"
+            ]
+            .apply(
+                format_pp
+            )
         )
 
 
@@ -1808,14 +2478,25 @@ with tab4:
         )
 
 
-        ml_long = ml_compare.melt(
-            id_vars="Metrica",
-            value_vars=[
-                "MASTER",
-                "CARICATO",
-            ],
-            var_name="Dataset",
-            value_name="Valore",
+        # ----------------------------------------------------
+        # Grafico ML
+        # ----------------------------------------------------
+
+        ml_long = (
+            ml_compare.melt(
+                id_vars=[
+                    "Metrica"
+                ],
+
+                value_vars=[
+                    "MASTER",
+                    "CARICATO",
+                ],
+
+                var_name="Dataset",
+
+                value_name="Valore",
+            )
         )
 
 
@@ -1835,7 +2516,10 @@ with tab4:
 
         fig.update_yaxes(
             tickformat=".0%",
-            range=[0, 1],
+            range=[
+                0,
+                1,
+            ],
         )
 
 
@@ -1859,7 +2543,9 @@ with tab4:
         )
 
 
-        d1, d2 = st.columns(2)
+        d1, d2 = (
+            st.columns(2)
+        )
 
 
         d1.info(
@@ -1887,11 +2573,28 @@ with tab4:
         )
 
 
+        risk_labels = {
+
+            "Low_Risk":
+                "Rischio basso",
+
+            "Medium_Risk":
+                "Rischio medio",
+
+            "High_Risk":
+                "Rischio alto",
+        }
+
+
         fig = comparison_distribution(
             master_df,
             current_df,
             COL_RISK,
-            "Distribuzione del rischio: MASTER vs CARICATO",
+            (
+                "Distribuzione del rischio: "
+                "MASTER vs CARICATO"
+            ),
+            category_map=risk_labels,
         )
 
 
@@ -1916,7 +2619,10 @@ with tab4:
             master_df,
             current_df,
             COL_PROFILE,
-            "ML Profile: MASTER vs CARICATO",
+            (
+                "ML Profile: "
+                "MASTER vs CARICATO"
+            ),
         )
 
 
@@ -1929,7 +2635,7 @@ with tab4:
 
 
         # ====================================================
-        # PROFILO CAMPIONE
+        # PROFILO DEL CAMPIONE
         # ====================================================
 
         st.markdown(
@@ -1937,64 +2643,172 @@ with tab4:
         )
 
 
-        comparison_variables = [
+        # ----------------------------------------------------
+        # Genere + modalità lavorativa
+        # ----------------------------------------------------
 
-            (
-                COL_GENDER,
-                "Genere",
-            ),
-
-            (
-                COL_AGE,
-                "Età",
-            ),
-
-            (
-                COL_MODE,
-                "Modalità lavorativa",
-            ),
-
-            (
-                COL_SECTOR,
-                "Settore lavorativo",
-            ),
-
-            (
-                COL_SENIORITY,
-                "Anzianità lavorativa",
-            ),
-
-            (
-                COL_HOURS,
-                "Ore lavorative settimanali",
-            ),
-
-            (
-                COL_ROLE,
-                "Ruolo e responsabilità",
-            ),
-        ]
+        comp1, comp2 = (
+            st.columns(2)
+        )
 
 
-        for column, title in comparison_variables:
-
-            fig = comparison_distribution(
+        fig_gender_comp = (
+            comparison_distribution(
                 master_df,
                 current_df,
-                column,
-                f"{title}: MASTER vs CARICATO",
+                COL_GENDER,
+                "Genere",
+            )
+        )
+
+
+        if fig_gender_comp is not None:
+
+            comp1.plotly_chart(
+                fig_gender_comp,
+                use_container_width=True,
             )
 
-            if fig is not None:
 
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True,
-                )
+        fig_mode_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_MODE,
+                "Modalità lavorativa",
+            )
+        )
+
+
+        if fig_mode_comp is not None:
+
+            comp2.plotly_chart(
+                fig_mode_comp,
+                use_container_width=True,
+            )
+
+
+        # ----------------------------------------------------
+        # Età + anzianità
+        # ----------------------------------------------------
+
+        comp3, comp4 = (
+            st.columns(2)
+        )
+
+
+        fig_age_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_AGE,
+                "Età",
+            )
+        )
+
+
+        if fig_age_comp is not None:
+
+            comp3.plotly_chart(
+                fig_age_comp,
+                use_container_width=True,
+            )
+
+
+        fig_seniority_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_SENIORITY,
+                "Anzianità lavorativa",
+                horizontal=True,
+            )
+        )
+
+
+        if fig_seniority_comp is not None:
+
+            comp4.plotly_chart(
+                fig_seniority_comp,
+                use_container_width=True,
+            )
+
+
+        # ----------------------------------------------------
+        # Ore + settore
+        # ----------------------------------------------------
+
+        comp5, comp6 = (
+            st.columns(2)
+        )
+
+
+        fig_hours_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_HOURS,
+                "Ore lavorative settimanali",
+                horizontal=True,
+            )
+        )
+
+
+        if fig_hours_comp is not None:
+
+            comp5.plotly_chart(
+                fig_hours_comp,
+                use_container_width=True,
+            )
+
+
+        fig_sector_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_SECTOR,
+                "Settore lavorativo",
+                horizontal=True,
+            )
+        )
+
+
+        if fig_sector_comp is not None:
+
+            comp6.plotly_chart(
+                fig_sector_comp,
+                use_container_width=True,
+            )
+
+
+        # ----------------------------------------------------
+        # Ruolo
+        # ----------------------------------------------------
+
+        fig_role_comp = (
+            comparison_distribution(
+                master_df,
+                current_df,
+                COL_ROLE,
+                (
+                    "Ruolo e livello "
+                    "di responsabilità"
+                ),
+                horizontal=True,
+            )
+        )
+
+
+        if fig_role_comp is not None:
+
+            st.plotly_chart(
+                fig_role_comp,
+                use_container_width=True,
+            )
 
 
         # ====================================================
-        # RIEPILOGO AUTOMATICO
+        # RIEPILOGO VARIAZIONI
         # ====================================================
 
         st.markdown(
@@ -2005,58 +2819,111 @@ with tab4:
         if delta_n > 0:
 
             st.write(
-                f"Il dataset caricato contiene "
+                "Il dataset caricato contiene "
                 f"**{delta_n} rispondenti in più** "
-                f"rispetto al MASTER."
+                "rispetto al MASTER."
             )
+
 
         elif delta_n < 0:
 
             st.write(
-                f"Il dataset caricato contiene "
+                "Il dataset caricato contiene "
                 f"**{abs(delta_n)} rispondenti in meno** "
-                f"rispetto al MASTER."
+                "rispetto al MASTER."
             )
+
 
         else:
 
             st.write(
-                "Il numero complessivo di rispondenti "
-                "è invariato."
+                "Il numero complessivo "
+                "di rispondenti è invariato."
             )
 
 
-        risk_delta = (
-            new_stats["risk_ma"]
-            - master_stats["risk_ma"]
+        # ----------------------------------------------------
+        # Risk Index
+        # ----------------------------------------------------
+
+        master_index = safe_float(
+            master_stats[
+                "risk_index"
+            ]
+        )
+
+        new_index = safe_float(
+            new_stats[
+                "risk_index"
+            ]
         )
 
 
-        index_delta = (
-            new_stats["risk_index"]
-            - master_stats["risk_index"]
+        if (
+            master_index is not None
+            and new_index is not None
+        ):
+
+            index_delta = (
+                new_index
+                - master_index
+            )
+
+            st.write(
+                "Variazione del "
+                "**Risk Index medio**: "
+                f"**{format_pp(index_delta)}**."
+            )
+
+
+        # ----------------------------------------------------
+        # Rischio medio-alto
+        # ----------------------------------------------------
+
+        master_risk_ma = safe_float(
+            master_stats[
+                "risk_ma"
+            ]
+        )
+
+        new_risk_ma = safe_float(
+            new_stats[
+                "risk_ma"
+            ]
         )
 
 
-        st.write(
-            "Variazione del **Risk Index medio**: "
-            f"**{format_pp(index_delta)}**."
-        )
+        if (
+            master_risk_ma is not None
+            and new_risk_ma is not None
+        ):
+
+            risk_delta = (
+                new_risk_ma
+                - master_risk_ma
+            )
+
+            st.write(
+                "Variazione della quota di "
+                "**rischio medio-alto**: "
+                f"**{format_pp(risk_delta)}**."
+            )
 
 
-        st.write(
-            "Variazione della quota di "
-            "**rischio medio-alto**: "
-            f"**{format_pp(risk_delta)}**."
-        )
-
+        # ----------------------------------------------------
+        # Accuracy CV
+        # ----------------------------------------------------
 
         cv_master = safe_float(
-            master_ml_stats["cv"]
+            master_ml_stats[
+                "cv"
+            ]
         )
 
         cv_new = safe_float(
-            current_ml_stats["cv"]
+            current_ml_stats[
+                "cv"
+            ]
         )
 
 
@@ -2065,10 +2932,50 @@ with tab4:
             and cv_new is not None
         ):
 
+            cv_delta = (
+                cv_new
+                - cv_master
+            )
+
             st.write(
                 "Variazione della "
                 "**Cross Validation Accuracy**: "
-                f"**{format_pp(cv_new - cv_master)}**."
+                f"**{format_pp(cv_delta)}**."
+            )
+
+
+        # ----------------------------------------------------
+        # Fattore dominante
+        # ----------------------------------------------------
+
+        master_dom = str(
+            master_ml_stats[
+                "dominant"
+            ]
+        )
+
+        new_dom = str(
+            current_ml_stats[
+                "dominant"
+            ]
+        )
+
+
+        if master_dom == new_dom:
+
+            st.write(
+                "Il **fattore dominante** "
+                "rimane invariato: "
+                f"**{new_dom}**."
+            )
+
+        else:
+
+            st.write(
+                "Il **fattore dominante** "
+                "è cambiato da "
+                f"**{master_dom}** a "
+                f"**{new_dom}**."
             )
 
 
@@ -2077,6 +2984,7 @@ with tab4:
 # ============================================================
 
 st.divider()
+
 
 st.caption(
     "Fonte: Survey_Data + ML_Output. "
