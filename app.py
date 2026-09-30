@@ -1203,7 +1203,7 @@ for label, col in filter_cols.items():
 
 if st.sidebar.button(
     "Azzera filtri",
-    use_container_width=True,
+    width="stretch",
 ):
 
     st.rerun()
@@ -1351,7 +1351,7 @@ with tab1:
 
         c1.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1393,7 +1393,7 @@ with tab1:
 
         c2.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1417,7 +1417,7 @@ with tab1:
 
         c3.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1432,7 +1432,7 @@ with tab1:
 
         c4.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1491,7 +1491,7 @@ with tab1:
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -1521,7 +1521,7 @@ with tab2:
 
         a.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1535,7 +1535,7 @@ with tab2:
 
         b.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1555,7 +1555,7 @@ with tab2:
 
         a.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1570,7 +1570,7 @@ with tab2:
 
         b.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1585,7 +1585,7 @@ with tab2:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1610,7 +1610,7 @@ with tab2:
             filtered[
                 visible_cols
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -1767,7 +1767,7 @@ with tab3:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -1805,7 +1805,7 @@ with tab3:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
     else:
@@ -1850,7 +1850,7 @@ with tab3:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
     else:
@@ -1916,7 +1916,7 @@ with tab3:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -2208,7 +2208,7 @@ with tab4:
 
         st.dataframe(
             display,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -2265,7 +2265,7 @@ with tab4:
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -2395,7 +2395,7 @@ with tab4:
 
         st.dataframe(
             rf_display,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -2452,7 +2452,7 @@ with tab4:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2480,7 +2480,7 @@ with tab4:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2510,7 +2510,7 @@ with tab4:
 
             row1a.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2526,7 +2526,7 @@ with tab4:
 
             row1b.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2547,7 +2547,7 @@ with tab4:
 
             row2a.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2564,7 +2564,7 @@ with tab4:
 
             row2b.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2586,7 +2586,7 @@ with tab4:
 
             row3a.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2603,7 +2603,7 @@ with tab4:
 
             row3b.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2620,7 +2620,7 @@ with tab4:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2762,7 +2762,7 @@ with tab4:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
             )
 
 
