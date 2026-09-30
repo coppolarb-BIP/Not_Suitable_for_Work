@@ -1352,6 +1352,7 @@ with tab1:
         c1.plotly_chart(
             fig,
             width="stretch",
+            key="overview_risk_distribution",
         )
 
 
@@ -1394,6 +1395,7 @@ with tab1:
         c2.plotly_chart(
             fig,
             width="stretch",
+            key="overview_ml_profile",
         )
 
 
@@ -1418,6 +1420,7 @@ with tab1:
         c3.plotly_chart(
             fig,
             width="stretch",
+            key="overview_sector",
         )
 
 
@@ -1433,6 +1436,7 @@ with tab1:
         c4.plotly_chart(
             fig,
             width="stretch",
+            key="overview_work_mode",
         )
 
 
@@ -1492,6 +1496,7 @@ with tab1:
     st.plotly_chart(
         fig,
         width="stretch",
+        key="overview_risk_dimensions",
     )
 
 
@@ -1522,6 +1527,7 @@ with tab2:
         a.plotly_chart(
             fig,
             width="stretch",
+            key="profile_age",
         )
 
 
@@ -1536,6 +1542,7 @@ with tab2:
         b.plotly_chart(
             fig,
             width="stretch",
+            key="profile_gender",
         )
 
 
@@ -1556,6 +1563,7 @@ with tab2:
         a.plotly_chart(
             fig,
             width="stretch",
+            key="profile_seniority",
         )
 
 
@@ -1571,6 +1579,7 @@ with tab2:
         b.plotly_chart(
             fig,
             width="stretch",
+            key="profile_weekly_hours",
         )
 
 
@@ -1586,6 +1595,7 @@ with tab2:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="profile_role",
         )
 
 
@@ -1768,6 +1778,7 @@ with tab3:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="random_forest_training_vs_cv",
         )
 
 
@@ -1806,6 +1817,7 @@ with tab3:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="confusion_matrix_training",
         )
 
     else:
@@ -1851,6 +1863,7 @@ with tab3:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="confusion_matrix_cv",
         )
 
     else:
@@ -1917,6 +1930,7 @@ with tab3:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="random_forest_feature_importance",
         )
 
 
@@ -2266,6 +2280,7 @@ with tab4:
         st.plotly_chart(
             fig,
             width="stretch",
+            key="comparison_risk_indicators",
         )
 
 
@@ -2453,6 +2468,7 @@ with tab4:
             st.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_risk_distribution",
             )
 
 
@@ -2481,6 +2497,7 @@ with tab4:
             st.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_ml_profile",
             )
 
 
@@ -2511,6 +2528,7 @@ with tab4:
             row1a.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_gender",
             )
 
 
@@ -2527,6 +2545,7 @@ with tab4:
             row1b.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_work_mode",
             )
 
 
@@ -2548,6 +2567,7 @@ with tab4:
             row2a.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_age",
             )
 
 
@@ -2565,6 +2585,7 @@ with tab4:
             row2b.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_seniority",
             )
 
 
@@ -2587,6 +2608,7 @@ with tab4:
             row3a.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_weekly_hours",
             )
 
 
@@ -2604,6 +2626,7 @@ with tab4:
             row3b.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_sector",
             )
 
 
@@ -2621,6 +2644,7 @@ with tab4:
             st.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_role",
             )
 
 
@@ -2763,6 +2787,7 @@ with tab4:
             st.plotly_chart(
                 fig,
                 width="stretch",
+                key="comparison_feature_importance",
             )
 
 
